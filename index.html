@@ -22,46 +22,23 @@
     button { padding: 10px 12px; border: none; background: #1a73e8; color: white; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 13px; }
     button:hover { background: #1557b0; }
     
-    /* 모자이크 그리드 기본 (PC 스타일: 한 줄에 10개) */
+    /* 모자이크 그리드 기본 (PC 스타일: 한 줄에 10개) - 메인 삭제버튼 완전 제거 */
     .mosaic-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-bottom: 15px; width: 100%; box-sizing: border-box; }
     .mosaic-item { position: relative; aspect-ratio: 1/1; border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; cursor: pointer; background: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); box-sizing: border-box; }
     .mosaic-item:hover { border-color: #1a73e8; }
     .mosaic-item img { width: 100%; height: 100%; object-fit: cover; }
     .mosaic-item .no-img { font-size: 11px; text-align: center; padding: 4px; word-break: break-all; color: #666; font-weight: 500; line-height: 1.2; }
     
-    /* 모자이크 내 삭제(X) 버튼 크기 최소화 및 롱프레스 시각 효과 */
-    .btn-movie-del { 
-      position: absolute; 
-      top: 2px; 
-      right: 2px; 
-      width: 14px; 
-      height: 14px; 
-      background: rgba(220, 53, 69, 0.85); 
-      color: white; 
-      border: none; 
-      border-radius: 3px; 
-      font-size: 9px; 
-      font-weight: bold; 
-      cursor: pointer; 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
-      z-index: 10; 
-      padding: 0; 
-      user-select: none;
-      -webkit-user-select: none;
-      transition: transform 3s linear, opacity 3s linear, background-color 0.2s; /* 3초 동안 서서히 변화 */
-    }
-    .btn-movie-del:hover { background: #dc3545; }
-    .btn-movie-del.pressing { background: #b21f2d; transform: scale(0.7); opacity: 0.3; }
-
     /* 상세 섹션 */
     .detail-section { border: 1px solid #1a73e8; border-radius: 8px; padding: 15px; margin-bottom: 20px; background: #fff; position: relative; }
     .detail-header { font-size: 15px; font-weight: bold; color: #1a73e8; margin-bottom: 10px; border-bottom: 2px solid #1a73e8; padding-bottom: 5px; display: flex; justify-content: space-between; align-items: center; }
+    .detail-header-btns { display: flex; gap: 4px; align-items: center; }
     
-    /* 하단 이동 버튼 스타일 */
+    /* 하단 이동 버튼 및 새 영화 삭제 버튼 스타일 */
     .btn-move-down { background: #f0f4f9; color: #444; border: 1px solid #ccc; font-size: 11px; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-weight: normal; }
     .btn-move-down:hover { background: #e2e8f0; }
+    .btn-movie-remove { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; font-size: 11px; padding: 3px 8px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    .btn-movie-remove:hover { background: #ffcdd2; }
 
     .review-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px dashed #eee; }
     .review-item a { color: #0056b3; text-decoration: none; font-weight: 500; font-size: 14px; }
@@ -93,7 +70,6 @@
         aspect-ratio: 1 / 1;
       }
       
-      /* 이미지가 없을 때 글자가 지나치게 깨지는 것을 막기 위해 가독성 확보 */
       .mosaic-item .no-img {
         font-size: 9px;
         padding: 2px;
@@ -113,7 +89,7 @@
 <div class="container">
   <h2>New Movies Reviews & Sites</h2>
   
-  <!-- 1. 모자이크 그리드 (최신순 배치 예정) -->
+  <!-- 1. 모자이크 그리드 (최신순 배치) -->
   <div class="mosaic-grid" id="mosaicGrid"></div>
 
   <!-- 2. 입력창 배치 컴팩트화 (정확히 한 줄 고정 및 4:5:1 비율 지정) -->
@@ -125,11 +101,14 @@
     </div>
   </div>
 
-  <!-- 3. 상세 매체 링크 및 관리창 -->
+  <!-- 3. 상세 매체 링크 및 관리창 (삭제 기능이 이쪽 헤더로 이동했습니다) -->
   <div id="detailSection" class="detail-section hidden">
     <div class="detail-header">
       <span id="selectedMovieTitle">선택된 영화</span>
-      <button class="btn-move-down" onclick="moveMovieToBottom()">[▼] 하단이동</button>
+      <div class="detail-header-btns">
+        <button class="btn-move-down" onclick="moveMovieToBottom()">[▼] 하단이동</button>
+        <button class="btn-movie-remove" onclick="deleteCurrentMovie()">[X] 영화삭제</button>
+      </div>
     </div>
     
     <div id="reviewList"></div>
@@ -187,59 +166,10 @@
       item.className = 'mosaic-item';
       item.title = movie.name;
       
-      item.onclick = (e) => {
-        if(e.target.classList.contains('btn-movie-del')) return; 
+      // 이제 단순 클릭으로 편리하게 선택만 수행합니다.
+      item.onclick = () => {
         selectMovie(movie.id);
       };
-
-      const delBtn = document.createElement('button');
-      delBtn.className = 'btn-movie-del';
-      delBtn.innerText = 'X';
-      
-      // 롱프레스 오작동 원천 차단 변수 및 타이머 세팅
-      let longPressTimer = null;
-      let isLongPressed = false;
-
-      const startPress = (e) => {
-        e.stopPropagation(); 
-        if (e.type === 'mousedown' && e.button !== 0) return; 
-
-        isLongPressed = false;
-        delBtn.classList.add('pressing');
-        
-        // 정확히 3초(3000ms) 동안 유지해야 삭제 수행
-        longPressTimer = setTimeout(() => {
-          isLongPressed = true;
-          delBtn.classList.remove('pressing');
-          deleteMovie(movie.id, movie.name); 
-        }, 3000);
-      };
-
-      const cancelPress = (e) => {
-        e.stopPropagation();
-        delBtn.classList.remove('pressing');
-        if (longPressTimer) {
-          clearTimeout(longPressTimer);
-          longPressTimer = null;
-        }
-      };
-
-      // 단순 클릭(클릭 이벤트 트리거)으로 즉시 삭제되는 현상 차단
-      delBtn.onclick = (e) => {
-        e.stopPropagation();
-        e.preventDefault();
-      };
-
-      // 마우스 및 터치 이벤트 바인딩
-      delBtn.addEventListener('mousedown', startPress);
-      delBtn.addEventListener('touchstart', startPress, { passive: true });
-      
-      delBtn.addEventListener('mouseup', cancelPress);
-      delBtn.addEventListener('mouseleave', cancelPress);
-      delBtn.addEventListener('touchend', cancelPress);
-      delBtn.addEventListener('touchcancel', cancelPress);
-      
-      item.appendChild(delBtn);
 
       if (movie.icon && (movie.icon.startsWith('http://') || movie.icon.startsWith('https://'))) {
         const img = document.createElement('img');
@@ -276,17 +206,22 @@
     });
   }
 
-  function deleteMovie(id, name) {
-    if(!confirm(`[${name}] 영화 및 연결된 모든 링크 데이터를 삭제하시겠습니까?`)) return;
+  // 하단 상세창의 [X] 영화삭제 버튼 클릭 시 작동하는 함수
+  function deleteCurrentMovie() {
+    if(!selectedMovieId) return;
+    const movie = movieData.find(m => m.id === selectedMovieId);
+    if(!movie) return;
+
+    if(!confirm(`[${movie.name}] 영화 및 연결된 모든 링크 데이터를 삭제하시겠습니까?`)) return;
+    
     callBackend({
       action: "deleteMovie",
-      id: id
+      id: selectedMovieId
     }, function(data) {
       movieData = data;
       renderMosaic();
-      if(selectedMovieId === id) {
-        document.getElementById('detailSection').classList.add('hidden');
-      }
+      document.getElementById('detailSection').classList.add('hidden');
+      selectedMovieId = null;
     });
   }
 
