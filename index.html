@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>New Movies Reviews & Sites</title>
+  <style>
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #f5f7fb; margin: 0; padding: 15px; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    h2 { text-align: center; color: #1a73e8; margin-top: 0; }
+    
+    /* 상단 등록/검색 폼 */
+    .form-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #e0e0e0; }
+    .form-row { display: flex; gap: 8px; }
+    input[type="text"] { flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+    button { padding: 10px 16px; border: none; background: #1a73e8; color: white; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    button:hover { background: #1557b0; }
+
+    /* 모자이크 그리드: 모바일 기준 1줄에 5개 */
+    .mosaic-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 20px; }
+    .mosaic-item { position: relative; aspect-ratio: 1/1; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; cursor: pointer; background: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+    .mosaic-item:hover { border-color: #1a73e8; }
+    .mosaic-item img { width: 100%; height: 100%; object-fit: cover; }
+    .mosaic-item .no-img { font-size: 11px; text-align: center; padding: 4px; word-break: break-all; color: #666; }
+
+    /* 상세 매체 링크 리스트 및 입력창 */
+    .detail-section { border: 1px solid #1a73e8; border-radius: 8px; padding: 15px; margin-bottom: 20px; background: #fff; }
+    .detail-header { font-size: 16px; font-weight: bold; color: #1a73e8; margin-bottom: 10px; border-bottom: 2px solid #1a73e8; padding-bottom: 5px; }
+    
+    .review-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px dashed #eee; }
+    .review-item a { color: #0056b3; text-decoration: none; font-weight: 500; }
+    .action-btn { padding: 4px 8px; font-size: 12px; border-radius: 4px; cursor: pointer; margin-left: 4px; font-weight: bold; border: none;}
+    .btn-edit { background: #e3f2fd; color: #0d47a1; }
+    .btn-del { background: #ffebee; color: #c62828; }
+
+    /* 하단 관리 */
+    .footer-admin { margin-top: 30px; padding-top: 15px; border-top: 1px dashed #ccc; text-align: center; display: flex; justify-content: center; gap: 10px; }
+    .btn-secondary { background: #6c757d; font-size: 12px; padding: 8px 12px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>New Movies Reviews & Sites</h2>
+  
+  <!-- 영화 등록 & 검색창 -->
+  <div class="form-group">
+    <div class="form-row">
+      <input type="text" id="movieName" placeholder="영화 제목 (alt속성 겸용)">
+      <input type="text" id="movieIcon" placeholder="이미지 URL 또는 단어">
+    </div>
+    <div class="form-row">
+      <input type="text" id="searchMovie" placeholder="영화 검색..." oninput="renderMosaic()">
+      <button onclick="createNewMovie()">등록</button>
+    </div>
+  </div>
+
+  <!-- 모자이크 극장판 한 줄에 5개 -->
+  <div class="mosaic-grid" id="mosaicGrid"></div>
+
+  <!-- 하단 선택된 영화의 매체 url 입력 및 관리창 -->
+  <div id="detailSection" class="detail-section hidden">
+    <div class="detail-header" id="selectedMovieTitle">선택된 영화</div>
+    
+    <!-- 매체 링크 리스트 -->
+    <div id="reviewList"></div>
+    
+    <!-- 매체 입력창 -->
+    <div class="form-group" style="margin-top:10px; background:#fff; padding:0; border:none;">
+      <input type="hidden" id="editingRowId" value="">
+      <div class="form-row">
+        <input type="text" id="mediaName" placeholder="매체명">
+        <input type="text" id="reviewUrl" placeholder="URL 주소">
+        <button onclick="submitReview()" id="btnSubmitReview">[+] 저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 최하단 백업 및 복원 -->
+  <div class="footer-admin">
+    <button class="btn-secondary" onclick="backupData()">[백업하기]</button>
+    <button class="btn-secondary" onclick="restoreData()">[db복원]</button>
+  </div>
+</div>
+
+<script>
+  // 전달해주신 배포 고유 주소를 코드 내부에 고정 매립합니다.
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz6Nj4WQd8SAyUZS1xvRqAd_Bi1VnGopeeNDoSvpdN1U06U938_TvQpWzhbZHERXTjY/exec";
+
+  let movieData = []; 
+  let selectedMovieId = null;
+
+  window.onload = function() {
+    google.script.run.withSuccessHandler(function(data) {
+      movieData = data;
+      renderMosaic();
+    }).getMovieData();
+  };
+
+  // 모자이크 출력
+  function renderMosaic() {
+    const grid = document.getElementById('mosaicGrid');
+    const keyword = document.getElementById('searchMovie').value.trim().toLowerCase();
+    grid.innerHTML = '';
+
+    movieData.forEach(movie => {
+      if (keyword && !movie.name.toLowerCase().includes(keyword)) return;
+
+      const item = document.createElement('div');
+      item.className = 'mosaic-item';
+      item.title = movie.name; 
+      item.onclick = () => selectMovie(movie.id);
+
+      if (movie.icon.startsWith('http://') || movie.icon.startsWith('https://')) {
+        const img = document.createElement('img');
+        img.src = movie.icon;
+        img.alt = movie.name; 
+        item.appendChild(img);
+      } else {
+        const div = document.createElement('div');
+        div.className = 'no-img';
+        div.innerText = movie.icon || movie.name;
+        item.appendChild(div);
+      }
+      grid.appendChild(item);
+    });
+  }
+
+  // 신규 영화 아이콘 등록
+  function createNewMovie() {
+    const name = document.getElementById('movieName').value.trim();
+    const icon = document.getElementById('movieIcon').value.trim();
+    if(!name) return alert('영화 제목을 입력하세요.');
+    
+    const id = 'm_' + Date.now();
+    google.script.run.withSuccessHandler(function(data) {
+      movieData = data;
+      renderMosaic();
+      document.getElementById('movieName').value = '';
+      document.getElementById('movieIcon').value = '';
+      selectMovie(id);
+    }).saveMovie(id, name, icon, "", "");
+  }
+
+  // 영화 클릭 시 하단에 매체 URL 입력창 활성화
+  function selectMovie(id) {
+    selectedMovieId = id;
+    const movie = movieData.find(m => m.id === id);
+    if (!movie) return;
+
+    document.getElementById('detailSection').classList.remove('hidden');
+    document.getElementById('selectedMovieTitle').innerText = movie.name;
+    resetReviewForm();
+    renderReviews(movie);
+  }
+
+  // 매체 리뷰 목록 렌더링
+  function renderReviews(movie) {
+    const listDiv = document.getElementById('reviewList');
+    listDiv.innerHTML = '';
+
+    movie.reviews.forEach(r => {
+      if(!r.media && !r.url) return;
+      
+      const row = document.createElement('div');
+      row.className = 'review-item';
+      row.innerHTML = `
+        <a href="${r.url}" target="_blank">${r.media}</a>
+        <div>
+          <button class="action-btn btn-edit" onclick="editReview('${r.row}', '${r.media}', '${r.url}')">[+]</button>
+          <button class="action-btn btn-del" onclick="deleteReview('${r.row}')">[-]</button>
+        </div>
+      `;
+      listDiv.appendChild(row);
+    });
+  }
+
+  function resetReviewForm() {
+    document.getElementById('editingRowId').value = '';
+    document.getElementById('mediaName').value = '';
+    document.getElementById('reviewUrl').value = '';
+    document.getElementById('btnSubmitReview').innerText = '[+] 저장';
+  }
+
+  function editReview(rowId, media, url) {
+    document.getElementById('editingRowId').value = rowId;
+    document.getElementById('mediaName').value = media;
+    document.getElementById('reviewUrl').value = url;
+    document.getElementById('btnSubmitReview').innerText = '[+] 수정';
+  }
+
+  function submitReview() {
+    const rowId = document.getElementById('editingRowId').value;
+    const media = document.getElementById('mediaName').value.trim();
+    const url = document.getElementById('reviewUrl').value.trim();
+    
+    if(!media || !url) return alert('매체명과 URL을 입력하세요.');
+    
+    const movie = movieData.find(m => m.id === selectedMovieId);
+
+    google.script.run.withSuccessHandler(function(data) {
+      movieData = data;
+      resetReviewForm();
+      selectMovie(selectedMovieId);
+    }).addOrUpdateReview(rowId, movie.id, movie.name, movie.icon, media, url);
+  }
+
+  function deleteReview(rowId) {
+    if(!confirm('정말 삭제하시겠습니까?')) return;
+    google.script.run.withSuccessHandler(function(data) {
+      movieData = data;
+      selectMovie(selectedMovieId);
+    }).deleteReviewRow(rowId);
+  }
+
+  function backupData() {
+    const jsonStr = JSON.stringify(movieData, null, 2);
+    const blob = new Blob([jsonStr], {type: "application/json"});
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "movie_db_backup_" + new Date().toISOString().slice(0,10) + ".json";
+    link.click();
+  }
+
+  function restoreData() {
+    const jsonInput = prompt("백업했던 JSON 텍스트 전체를 복사하여 여기에 붙여넣으세요:");
+    if (!jsonInput) return;
+    try {
+      google.script.run.withSuccessHandler(function(data) {
+        movieData = data;
+        renderMosaic();
+        document.getElementById('detailSection').classList.add('hidden');
+        alert('DB 복원이 완료되었습니다.');
+      }).restoreDatabase(jsonInput);
+    } catch(e) {
+      alert('올바르지 않은 데이터 형식입니다.');
+    }
+  }
+</script>
+</body>
+</html>
