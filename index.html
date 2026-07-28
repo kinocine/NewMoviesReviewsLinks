@@ -26,7 +26,7 @@
     .mosaic-item { position: relative; aspect-ratio: 1/1; border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden; cursor: pointer; background: #fff; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
     .mosaic-item:hover { border-color: #1a73e8; }
     .mosaic-item img { width: 100%; height: 100%; object-fit: cover; }
-    .mosaic-item .no-img { font-size: 10px; text-align: center; padding: 2px; word-break: break-all; color: #666; }
+    .mosaic-item .no-img { font-size: 11px; text-align: center; padding: 4px; word-break: break-all; color: #666; font-weight: 500; line-height: 1.2; }
     
     /* 모자이크 내 바로 삭제(X) 버튼 */
     .btn-movie-del { position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; background: rgba(220, 53, 69, 0.85); color: white; border: none; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 10; padding: 0; }
@@ -54,8 +54,22 @@
     @media (max-width: 600px) {
       body { padding: 5px; }
       .container { padding: 10px; border-radius: 8px; }
-      /* 모바일에서는 여백 없이 촘촘하게 한 줄에 6개 배치 */
-      .mosaic-grid { grid-template-columns: repeat(6, 1fr); gap: 3px; margin-bottom: 10px; }
+      
+      /* 모바일에서 정확히 한 줄에 6개 배치 보장 및 간격 유지 */
+      .mosaic-grid { 
+        grid-template-columns: repeat(6, 1fr) !important; 
+        gap: 4px; 
+        margin-bottom: 10px; 
+      }
+      
+      /* 이미지가 없을 때 글자가 지나치게 깨지는 것을 막기 위해 가독성 확보 */
+      .mosaic-item .no-img {
+        font-size: 9px;
+        padding: 2px;
+        line-height: 1.1;
+        letter-spacing: -0.5px;
+      }
+      
       input[type="text"], button { font-size: 12px; padding: 8px 6px; }
       .btn-submit-movie { padding: 8px 0; }
     }
@@ -133,7 +147,6 @@
     const grid = document.getElementById('mosaicGrid');
     grid.innerHTML = '';
 
-    // 최신 등록 영화를 맨 앞으로 가져오기 위해 배열을 역순으로 복사하여 렌더링합니다.
     const displayData = movieData.slice().reverse();
 
     displayData.forEach(movie => {
@@ -141,13 +154,11 @@
       item.className = 'mosaic-item';
       item.title = movie.name;
       
-      // 모자이크 자체 클릭 이벤트
       item.onclick = (e) => {
         if(e.target.classList.contains('btn-movie-del')) return; 
         selectMovie(movie.id);
       };
 
-      // 개별 이미지 바로 삭제 버튼 우측 상단 배치
       const delBtn = document.createElement('button');
       delBtn.className = 'btn-movie-del';
       delBtn.innerText = 'X';
